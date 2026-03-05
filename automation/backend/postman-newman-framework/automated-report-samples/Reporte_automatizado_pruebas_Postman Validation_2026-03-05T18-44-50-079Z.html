@@ -1,0 +1,726 @@
+
+<html>
+<head>
+    <title>Custom Report - 5/3/2026, 12:44:51 p.m.</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto&family=Montserrat&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Arial', sans-serif; margin: 0; background: white; }
+        h1 { font-family:'Roboto', sans-serif;  text-align: center; padding: 5px; }
+
+        .container {
+            width: 100%;            /* se adapta al ancho de la pantalla */
+            max-width: 950px;       /* límite máximo */
+            min-height: 400px;      /* altura inicial, crece si hay más contenido */
+            margin: 20px auto 0;    /* 50px desde arriba, centrado horizontal */
+            padding: 20px;
+            background: #f4f4f4;
+            border-radius: 8px;
+            border: 1px solid #ddd; /* borde grueso */
+        }
+
+        .nav { display: flex; justify-content: center; background: #333; }
+        .nav button { padding: 14px 20px; border: none; outline: none; cursor: pointer; color: white; background: #333; font-size: 16px; }
+        .nav button.active { background: #555; }
+
+        .tabcontent { display: none; padding: 20px; }
+
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; vertical-align: top; }
+        th { background-color: #f4f4f4; text-align: center; }
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+
+        .summary-table { table-layout: fixed; width: 100%; margin-bottom: 15px; }
+        .summary-table td:first-child { font-weight: bold; background-color: #eaeaea; width: 100px; }
+        .summary-table td:last-child { text-align: center; background-color: #f9f9f9; }
+
+        .result-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .result-table td { text-align: center; font-weight: bold; padding: 10px; background: transparent; }
+
+        .result-table td.passed  { background-color:#42a745; color:#fff; }
+        .result-table td.failed  { background-color:#dc3544; color:#fff; }
+        .result-table td.skipped { background-color:#f4c10b; color:#000; }
+        .result-table td.error { background-color:#eb8a00; color:#fff; }
+        .result-table td.total-cell { background-color:#f9f9f9; color:#000; }
+
+        /* Estilos de título y valor */
+        .label {
+            font-size: 16px; 
+            display: block;
+        }
+        .value {
+            font-size: 14px;
+            display: block;
+        }
+
+        .dashboard-wrapper { display:flex; gap:20px; flex-wrap: wrap; justify-content: space-between; }
+        .left-section { flex:1 1 45%; min-width: 300px; }
+        .chart-container {
+            flex: 1 1 25%; /* reducir el ancho relativo al dashboard */
+            min-width: 200px; 
+            max-width: 500px; /* máximo ancho */
+            text-align: center;
+        }
+
+
+        .info-container { display:flex; gap:20px; flex-wrap:wrap; margin-top:5px; justify-content: flex-start; }
+        .info-card { flex:1 1 45%; min-width:250px; padding:15px; border:1px solid #ddd; border-radius:8px; background-color:#f9f9f9; }
+        .info-card h3 { margin-top:0; }
+
+        .details-table { table-layout: fixed; width: 100%; margin-top:20px; }
+        .col-item { width: 15%; }
+        .col-request { width: 25%; }
+        .col-response { width: 40%; max-width: 400px; }
+        .col-summary { width: 20%; }
+
+        .chart-container { display:flex; gap:20px; flex-wrap:wrap justify-content: flex-start; }
+
+        .summary-table {
+            width: 100%;           /* ocupa todo el ancho del container */
+            table-layout: fixed;   /* columnas fijas para mantener proporciones */
+            border-collapse: collapse;
+        }
+
+        .summary-table th, .summary-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+            word-wrap: break-word; /* evita que el texto se desborde */
+        }
+
+        .summary-table th:first-child,
+        .summary-table td:first-child {
+            text-align: left;     /* nombre del item alineado a la izquierda */
+            width: 30%;           /* más espacio para el item */
+        }
+
+        .summary-table th:nth-child(2),
+        .summary-table th:nth-child(3),
+        .summary-table td:nth-child(2),
+        .summary-table td:nth-child(3) {
+            width: 40%;           /* Total y Failed ocupan igual espacio */
+        }
+
+        .string { color: green; }
+        .number { color: blue; }
+        .boolean { color: purple; }
+        .null { color: red; }
+        .key { color: brown; }
+
+        .tooltip {
+          position: relative;
+          cursor: help;
+          font-weight: bold;
+        }
+
+        .tooltip .tooltiptext {
+          visibility: hidden;
+          background-color: #333;
+          color: #fff;
+          text-align: left;
+          border-radius: 5px;
+          padding: 5px;
+          position: absolute;
+          z-index: 1;
+          bottom: 125%; /* Muestra el tooltip arriba del texto */
+          left: 50%;
+          transform: translateX(-50%);
+          opacity: 0;
+          transition: opacity 0.3s;
+          width: 220px;
+          font-size: 13px;
+          line-height: 1.2;
+        }
+
+        .tooltip:hover .tooltiptext {
+          visibility: visible;
+          opacity: 1;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>
+            <svg width="40" height="40" viewBox="0 0 128 128" style="vertical-align: middle; margin-right: 10px;">
+                <path fill="#FF6C37" d="M64 0C28.7 0 0 28.7 0 64s28.7 64 64 64 64-28.7 64-64S99.3 0 64 0zm0 120C33.1 120 8 94.9 8 64S33.1 8 64 8s56 25.1 56 56-25.1 56-56 56z"/>
+                <path fill="#FF6C37" d="M64 24c-22.1 0-40 17.9-40 40s17.9 40 40 40 40-17.9 40-40-17.9-40-40-40zm0 72c-17.6 0-32-14.4-32-32s14.4-32 32-32 32 14.4 32 32-14.4 32-32 32z"/>
+                <circle fill="#FF6C37" cx="64" cy="64" r="20"/>
+            </svg>
+            Resultados pruebas automatizadas Postman Validation
+        </h1>
+
+        <div class="nav">
+            <button class="tablink active" onclick="openTab(event, 'dashboard')">📊 Dashboard</button>
+            <button class="tablink" onclick="openTab(event, 'details')">📋 Detalle</button>
+        </div>
+
+        <div style="text-align: left; margin: 10px 0; font-weight:bold;">
+            jueves, 5 de marzo de 2026 12:44:51 p.m.
+        </div>
+
+        <!-- DASHBOARD -->
+        <div id="dashboard" class="tabcontent" style="display:block; font-family: 'Arial', sans-serif; color:#333;">
+            <div class="dashboard-wrapper" style="display:flex; flex-wrap:wrap; gap:20px; justify-content:space-between;">
+
+                <!-- Sección izquierda: estadísticas y datos -->
+                <div class="left-section" style="flex:1 1 45%; min-width:300px;">
+
+                    <!-- Tabla de estadísticas -->
+                    <table class="summary-table" style="width:100%; font-size:15px; margin-bottom:15px; border-collapse:collapse; line-height:1.2;">
+                        <tr><td style="font-weight:bold; padding:4px;">Total de Peticiones</td><td style="padding:4px;">1</td></tr>
+                        <tr><td style="font-weight:bold; padding:4px;">Total de Iteraciones</td><td style="padding:4px;">1</td></tr>
+                        <tr><td style="font-weight:bold; padding:4px;">Total de Validaciones</td><td style="padding:4px;">4</td></tr>
+                        <tr><td style="font-weight:bold; padding:4px;">Tiempo Total</td><td style="padding:4px;">0.92 s (921 ms)</td></tr>
+                    </table>
+
+                    <!-- Tabla de resultados -->
+                    <table class="result-table" style="width:100%; font-size:15px; margin-bottom:15px; text-align:center; border-collapse: collapse; line-height:1;">
+                        <tr>
+                        <td class="passed" style="line-height:0.5;">
+                            <span class="label" style="font-size:15px; line-height:1;">Pasados</span><br>
+                            <span class="value" style="font-size:14px; font-weight:bold; line-height:1;">4 (100.0%)</span>
+                        </td>
+                        <td class="failed" style="line-height:0.5;">
+                            <span class="label" style="font-size:15px; line-height:1;">Fallados</span><br>
+                            <span class="value" style="font-size:14px; font-weight:bold; line-height:1;">0 (0.0%)</span>
+                        </td>
+                        <td class="skipped" style="line-height:0.5;">
+                            <span class="label" style="font-size:15px; line-height:1;">Omitidos</span><br>
+                            <span class="value" style="font-size:14px; font-weight:bold; line-height:1;">0 (0.0%)</span>
+                        </td>
+                        <td class="error" style="line-height:0.5;">
+                            <span class="label" style="font-size:15px; line-height:1;">Errores</span><br>
+                            <span class="value" style="font-size:14px; font-weight:bold; line-height:1;">0 (0.0%)</span>
+                        </td>
+                        <td class="total-cell" style="line-height:0.5;">
+                            <span class="label" style="font-size:15px; line-height:1;">Total</span><br>
+                            <span class="value" style="font-size:14px; font-weight:bold; line-height:1;">4</span>
+                        </td>
+                        </tr>
+                    </table>
+
+
+                    <!-- Info Cards -->
+                    <div class="info-container" style="display:flex; gap:15px; flex-wrap:wrap; margin-top:10px;">
+                        <div class="info-card" style="flex:1 1 45%; min-width:200px; padding:12px; border-radius:6px; background:#f9f9f9; font-size:15px;">
+                            <h3 style="margin-top:0; font-size:18px;">📁 Información del archivo</h3>
+                            <p><b>📄 Colección:</b> Postman Validation<br>
+                                <b>📄 Ambiente:</b> sandbox</p>
+                        </div>
+
+                        <div class="info-card" style="flex:1 1 45%; min-width:200px; padding:12px; border-radius:6px; background:#f9f9f9; font-size:15px;">
+                            <h3 style="margin-top:0; font-size:18px;">📈 Tiempos y datos</h3>
+                            <p><b>⏱️ Duración total:</b> 0.92 s (921 ms)<br>
+                                <b>🛢️ Datos recibidos:</b> 388 bytes<br>
+                                <b>⏱️ Tiempo promedio por request:</b> 0.26 s (260.0 ms)</p>
+                        </div>
+                    </div>
+                </div>
+
+               <!-- Contenedor de gráfica -->
+                <div class="chart-container"
+                     style="flex:1 1 25%; min-width:200px; text-align:center; line-height:1.2;">
+                    <canvas id="resultsChart" width="250" height="250"></canvas>
+                </div>
+                
+                <!-- Contenedor resumen de pruebas -->
+                <div class="summary-container" style="flex:1 1 100%; margin-top:5px; margin-bottom:5px; padding:0;">
+                    <h3 style="margin:0 0 2px 0; font-size:18px; line-height:1;">📑 Resumen de Pruebas</h3>
+                    <table class="summary-table" style="width:100%; font-size:15px; border-collapse:collapse; line-height:1.2;">
+                        <tr>
+                            <th style="background-color:#dddddd; font-weight:bold; padding:2px 4px; text-align:center;">Resumen</th>
+                            <th style="background-color:#dddddd; font-weight:bold; padding:2px 4px; text-align:center;">Total</th>
+                            <th style="background-color:#dddddd; font-weight:bold; padding:2px 4px; text-align:center;">Fallido</th>
+                        </tr>
+                        
+            <tr>
+                <td style="padding:2px 4px; text-align:left;">
+                    <span class="tooltip"> ℹ️ Peticiones
+                        <span class="tooltiptext">Número de peticiones enviadas a la API.</span>
+                    </span>
+                </td>
+                <td style="padding:2px 4px; text-align:center;">1</td>
+                <td style="padding:2px 4px; text-align:center;">0</td>
+            </tr>
+            
+            <tr>
+                <td style="padding:2px 4px; text-align:left;">
+                    <span class="tooltip"> ℹ️ Pre-request Script
+                        <span class="tooltiptext">Peticiones con scripts ejecutados antes del request.</span>
+                    </span>
+                </td>
+                <td style="padding:2px 4px; text-align:center;">1</td>
+                <td style="padding:2px 4px; text-align:center;">0</td>
+            </tr>
+            
+            <tr>
+                <td style="padding:2px 4px; text-align:left;">
+                    <span class="tooltip"> ℹ️ Post-response Script
+                        <span class="tooltiptext">Validaciones totales realizadas dentro de pm.test().</span>
+                    </span>
+                </td>
+                <td style="padding:2px 4px; text-align:center;">4</td>
+                <td style="padding:2px 4px; text-align:center;">0</td>
+            </tr>
+            
+            <tr>
+                <td style="padding:2px 4px; text-align:left;">
+                    <span class="tooltip"> ℹ️ Omitidas
+                        <span class="tooltiptext">Pruebas que fueron saltadas intencionalmente.</span>
+                    </span>
+                </td>
+                <td style="padding:2px 4px; text-align:center;">0</td>
+                <td style="padding:2px 4px; text-align:center;">-</td>
+            </tr>
+            
+            <tr>
+                <td style="padding:2px 4px; text-align:left;">
+                    <span class="tooltip"> ℹ️ Errores de Ejecución
+                        <span class="tooltiptext">Errores de código en scripts (JavaScript).</span>
+                    </span>
+                </td>
+                <td style="padding:2px 4px; text-align:center;">0</td>
+                <td style="padding:2px 4px; text-align:center;">-</td>
+            </tr>
+            
+                    </table>
+                </div>
+
+            </div>
+        </div>
+
+
+        <!-- DETALLE -->
+        <div id="details" class="tabcontent">
+            <table class="details-table">
+                <tr>
+                    <th class="col-item" style="background:#ddd;">Casos de Prueba</th>
+                </tr>
+                
+                    <tr>
+                        <td style="background-color: white;">
+                            <details>
+                                <summary style="font-weight:bold; cursor:pointer; background:#42a745; color:white; padding:6px; border-radius:4px;">
+                                    📁 Request Methods (1 requests)
+                                </summary>
+                                <div style="padding:10px; display:flex; flex-direction:column; gap:10px; font-size:13px;">
+
+                                    <!-- Resumen del Folder -->
+                                    <div style="display:flex; gap:10px; font-size:13px;">
+                                        <div style="flex:1; border:1px solid #ddd; border-radius:5px; padding:8px; background:#f9f9f9; font-size:13px;">
+                                            <b>📊 Resumen del Caso de Prueba</b><br>
+                                            🔢 Requests: 1<br>
+                                            📄 CSV usado: <span style="font-weight:bold; color:#007bff; word-break:break-all;">N/A</span><br>
+                                            ⏱️ Tiempo total: 260 ms (promedio: 260.0 ms)<br>
+                                            🗂️ Datos totales: 388 bytes
+                                        </div>
+                                        <div style="flex:1; border:1px solid #ddd; border-radius:5px; padding:8px; background:#f9f9f9; font-size:13px;">
+                                            <b>✔️ Resumen de Validaciones</b><br>
+                                            <span style="color:#42a745; font-weight:bold;">✅ Pasadas: 4</span><br>
+                                            <span style="color:#dc3544; font-weight:bold;">❌ Falladas: 0</span><br>
+                                            📊 Total: 4<br>
+                                            📈 Tasa de éxito: <span style="color:#42a745; font-weight:bold;">100.0%</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Requests Detallados -->
+                                    
+                                        <details id="request-Request-Methods-0" style="margin:10px 0; border:1px solid #ddd; border-radius:5px; background:white;">
+                                            <summary style="padding:8px; background:#f0f0f0; cursor:pointer; font-weight:bold; border-radius:5px;">
+                                                 Request 1: GET Request
+                                            </summary>
+                                            <div style="padding:10px; display:flex; flex-direction:column; gap:10px; font-size:12px;">
+                                                
+                                                <!-- Request Info -->
+                                                <div style="display:flex; gap:10px;">
+                                                    <div style="flex:1; border:1px solid #ddd; border-radius:5px; padding:8px; background:#f9f9f9;">
+                                                        <b>Request</b><br>
+                                                        ℹ️ Method: GET<br>
+                                                        ℹ️ URL: <a href="https://postman-echo.com/get?uuid=9b56877c-3773-42d3-b4ac-4040307899e6&amp;foo2=bar2" target="_blank" style="color:#007bff; text-decoration:underline;">
+                                                            https://postman-echo.com/get?uuid=9b56877c-3773-42d3-b4ac-4040307899e6&amp;foo2=bar2
+                                                        </a>
+                                                    </div>
+                                                    <div style="flex:1; border:1px solid #ddd; border-radius:5px; padding:8px; background:#f9f9f9;">
+                                                        <b>Response</b><br>
+                                                        🗄️ Code: 200<br>
+                                                        ⏱️ Time: 260 ms<br>
+                                                        🗂️ Size: 388 bytes
+                                                    </div>
+                                                </div>
+
+                                                <!-- Pre-request Script -->
+                                                
+                                                <div style="border:1px solid #ddd; border-radius:5px; padding:8px; background:#f9f9f9;">
+                                                    <b>📝 Pre-request Script</b>
+                                                    <pre style="max-height:200px; overflow:auto; margin-top:5px; font-size:11px; background:#2d2d2d; color:#f8f8f2; padding:10px; border-radius:4px;">// Generar un UUID dinámico
+const uuid = pm.variables.replaceIn(&#039;{{$guid}}&#039;);
+
+// Almacenar UUID como una variable de Entorno
+pm.environment.set(&quot;uuid&quot;, uuid);
+</pre>
+                                                </div>
+                                                
+
+                                                <!-- Request Headers -->
+                                                <div style="border:1px solid #ddd; border-radius:5px; padding:8px; background:#f9f9f9;">
+                                                    <b>📤 Request Headers</b>
+                                                    <table style="font-size:11px; width:100%; margin-top:5px;">
+                                                        <tr><th style="width:30%; text-align:left;">Key</th><th style="text-align:left;">Value</th></tr>
+                                                        
+                                                            <tr>
+                                                                <td style="word-break:break-word;">User-Agent</td>
+                                                                <td style="word-break:break-word; font-family:monospace;">PostmanRuntime/7.39.1</td>
+                                                            </tr>
+                                                        
+                                                            <tr>
+                                                                <td style="word-break:break-word;">Accept</td>
+                                                                <td style="word-break:break-word; font-family:monospace;">*/*</td>
+                                                            </tr>
+                                                        
+                                                            <tr>
+                                                                <td style="word-break:break-word;">Cache-Control</td>
+                                                                <td style="word-break:break-word; font-family:monospace;">no-cache</td>
+                                                            </tr>
+                                                        
+                                                            <tr>
+                                                                <td style="word-break:break-word;">Postman-Token</td>
+                                                                <td style="word-break:break-word; font-family:monospace;">ca6a****ee15</td>
+                                                            </tr>
+                                                        
+                                                            <tr>
+                                                                <td style="word-break:break-word;">Host</td>
+                                                                <td style="word-break:break-word; font-family:monospace;">postman-echo.com</td>
+                                                            </tr>
+                                                        
+                                                            <tr>
+                                                                <td style="word-break:break-word;">Accept-Encoding</td>
+                                                                <td style="word-break:break-word; font-family:monospace;">gzip, deflate, br</td>
+                                                            </tr>
+                                                        
+                                                            <tr>
+                                                                <td style="word-break:break-word;">Connection</td>
+                                                                <td style="word-break:break-word; font-family:monospace;">keep-alive</td>
+                                                            </tr>
+                                                        
+                                                    </table>
+                                                </div>
+
+                                                <!-- Query Params -->
+                                                
+                                                <div style="border:1px solid #ddd; border-radius:5px; padding:8px; background:#f9f9f9;">
+                                                    <b>🔍 Query Parameters</b>
+                                                    <table style="font-size:11px; width:100%; margin-top:5px;">
+                                                        <tr><th style="width:30%; text-align:left;">Key</th><th style="text-align:left;">Value</th></tr>
+                                                        
+                                                            <tr>
+                                                                <td style="word-break:break-word;">uuid</td>
+                                                                <td style="word-break:break-word; font-family:monospace;">9b56877c-3773-42d3-b4ac-4040307899e6</td>
+                                                            </tr>
+                                                        
+                                                            <tr>
+                                                                <td style="word-break:break-word;">foo2</td>
+                                                                <td style="word-break:break-word; font-family:monospace;">bar2</td>
+                                                            </tr>
+                                                        
+                                                    </table>
+                                                </div>
+                                                
+
+                                                <!-- Request Body -->
+                                                
+
+                                                <!-- Response Body -->
+                                                <div style="border:1px solid #ddd; border-radius:5px; padding:8px; background:#f9f9f9; position:relative;">
+                                                    <b>📥 Response Body</b>
+                                                    <button onclick="copyResponse(this)" style="position:absolute; top:8px; right:8px; padding:4px 8px; font-size:11px; cursor:pointer;">📋 Copiar</button>
+                                                    <pre style="max-height:250px; overflow:auto; margin-top:20px; font-size:11px;">
+                                                        {
+  <span class="key">"args":</span> {
+    <span class="key">"uuid":</span> <span class="string">"9b56877c-3773-42d3-b4ac-4040307899e6"</span>,
+    <span class="key">"foo2":</span> <span class="string">"bar2"</span>
+  },
+  <span class="key">"headers":</span> {
+    <span class="key">"host":</span> <span class="string">"postman-echo.com"</span>,
+    <span class="key">"postman-token":</span> <span class="string">"ca6a****ee15"</span>,
+    <span class="key">"accept-encoding":</span> <span class="string">"gzip, br"</span>,
+    <span class="key">"accept":</span> <span class="string">"*/*"</span>,
+    <span class="key">"x-forwarded-proto":</span> <span class="string">"https"</span>,
+    <span class="key">"user-agent":</span> <span class="string">"PostmanRuntime/7.39.1"</span>,
+    <span class="key">"cache-control":</span> <span class="string">"no-cache"</span>
+  },
+  <span class="key">"url":</span> <span class="string">"https://postman-echo.com/get?uuid=9b56877c-3773-42d3-b4ac-4040307899e6&amp;foo2=bar2"</span>
+}
+                                                    </pre>
+                                                </div>
+
+                                                <!-- Test Script -->
+                                                
+                                                <div style="border:1px solid #ddd; border-radius:5px; padding:8px; background:#f9f9f9;">
+                                                    <b>✅ Test Script</b>
+                                                    <pre style="max-height:200px; overflow:auto; margin-top:5px; font-size:11px; background:#2d2d2d; color:#f8f8f2; padding:10px; border-radius:4px;">// Validar Status Code
+pm.test(&quot;[Service Health] Status code is 200&quot;, function () {
+    pm.response.to.have.status(200);
+});
+
+// Validar tiempo de respuesta
+pm.test(&quot;[Service Health] Response time &lt; 1000ms&quot;, function () {
+    pm.expect(pm.response.responseTime).to.be.below(1000);
+});
+
+// Validad lógic de negocio
+pm.test(&quot;[Business] URL matches request URL&quot;, function () {
+    const data = pm.response.json();
+    const requestUrl = pm.request.url.toString();
+    pm.expect(data.url).to.eql(requestUrl);
+});
+
+// Validar de contrato
+const schema = {
+    type: &quot;object&quot;,
+    required: [&quot;args&quot;, &quot;headers&quot;, &quot;url&quot;],
+    properties: {
+        args: { type: &quot;object&quot; },
+        headers: { type: &quot;object&quot; },
+        url: { type: &quot;string&quot; }
+    }
+};
+
+pm.test(&quot;[Contract] JSON schema validation&quot;, function () {
+    pm.response.to.have.jsonSchema(schema);
+});</pre>
+                                                </div>
+                                                
+
+                                                <!-- Validaciones del Request -->
+                                                
+                                                <div style="border:1px solid #ddd; border-radius:5px; padding:8px; background:#f9f9f9;">
+                                                    <b>✔️ Validaciones (4)</b>
+                                                    <table style="width:100%; border-collapse: collapse; font-size:11px; margin-top:5px;">
+                                                        <tr>
+                                                            <th style="width:15%; text-align:center; padding:4px; border-bottom:1px solid #ccc; background:#f0f0f0;">Estado</th>
+                                                            <th style="text-align:left; padding:4px; border-bottom:1px solid #ccc; background:#f0f0f0;">Descripción</th>
+                                                        </tr>
+                                                        
+                                                            <tr>
+                                                                <td style="padding:4px; text-align:center; color:#42a745; font-weight:bold;">
+                                                                    ✅ PASSED
+                                                                </td>
+                                                                <td style="padding:4px; text-align:left;">
+                                                                    [Service Health] Status code is 200
+                                                                </td>
+                                                            </tr>
+                                                            
+                                                            <tr>
+                                                                <td style="padding:4px; text-align:center; color:#42a745; font-weight:bold;">
+                                                                    ✅ PASSED
+                                                                </td>
+                                                                <td style="padding:4px; text-align:left;">
+                                                                    [Service Health] Response time &lt; 1000ms
+                                                                </td>
+                                                            </tr>
+                                                            
+                                                            <tr>
+                                                                <td style="padding:4px; text-align:center; color:#42a745; font-weight:bold;">
+                                                                    ✅ PASSED
+                                                                </td>
+                                                                <td style="padding:4px; text-align:left;">
+                                                                    [Business] URL matches request URL
+                                                                </td>
+                                                            </tr>
+                                                            
+                                                            <tr>
+                                                                <td style="padding:4px; text-align:center; color:#42a745; font-weight:bold;">
+                                                                    ✅ PASSED
+                                                                </td>
+                                                                <td style="padding:4px; text-align:left;">
+                                                                    [Contract] JSON schema validation
+                                                                </td>
+                                                            </tr>
+                                                            
+                                                    </table>
+                                                </div>
+                                                
+                                            </div>
+                                        </details>
+                                        
+
+                                    <!-- Resumen Total de Validaciones del Folder -->
+                                    <div style="margin-top:15px; border:2px solid #ddd; border-radius:5px; padding:10px; background:#f9f9f9;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                            <h3 style="margin:0; font-size:16px; color:#333;">📋 Resumen Total de Validaciones</h3>
+                                            <button onclick="toggleValidationTable(this)" style="padding:6px 12px; font-size:12px; cursor:pointer; background:#007bff; color:white; border:none; border-radius:4px;">
+                                                🔽 Ocultar
+                                            </button>
+                                        </div>
+                                        <div class="validation-summary-table" style="max-height:500px; overflow-y:auto; overflow-x:auto; border:1px solid #ddd; border-radius:4px;">
+                                        <table style="width:100%; border-collapse: collapse; font-size:11px;">
+                                            <tr style="background:#e0e0e0;">
+                                                <th style="width:10%; text-align:center; padding:8px; border:1px solid #ccc;">N° Request</th>
+                                                <th style="width:10%; text-align:center; padding:8px; border:1px solid #ccc;">Estado</th>
+                                                <th style="text-align:left; padding:8px; border:1px solid #ccc;">Request</th>
+                                                <th style="text-align:left; padding:8px; border:1px solid #ccc;">Validación</th>
+                                            </tr>
+                                            
+                                                    <tr style="background:#e8f5e9;">
+                                                        <td style="padding:6px; text-align:center; border:1px solid #ccc; font-weight:bold;">
+                                                            <a href="#request-Request-Methods-0" onclick="openRequestDetails('request-Request-Methods-0')" style="color:#007bff; text-decoration:underline; cursor:pointer;">
+                                                                Request 1
+                                                            </a>
+                                                        </td>
+                                                        <td style="padding:6px; text-align:center; border:1px solid #ccc; color:#42a745; font-weight:bold;">
+                                                            ✅
+                                                        </td>
+                                                        <td style="padding:6px; text-align:left; border:1px solid #ccc; font-weight:bold;">
+                                                            GET Request
+                                                        </td>
+                                                        <td style="padding:6px; text-align:left; border:1px solid #ccc;">
+                                                            [Service Health] Status code is 200
+                                                            
+                                                        </td>
+                                                    </tr>
+                                                    
+                                                    <tr style="background:#e8f5e9;">
+                                                        <td style="padding:6px; text-align:center; border:1px solid #ccc; font-weight:bold;">
+                                                            <a href="#request-Request-Methods-0" onclick="openRequestDetails('request-Request-Methods-0')" style="color:#007bff; text-decoration:underline; cursor:pointer;">
+                                                                Request 1
+                                                            </a>
+                                                        </td>
+                                                        <td style="padding:6px; text-align:center; border:1px solid #ccc; color:#42a745; font-weight:bold;">
+                                                            ✅
+                                                        </td>
+                                                        <td style="padding:6px; text-align:left; border:1px solid #ccc; font-weight:bold;">
+                                                            GET Request
+                                                        </td>
+                                                        <td style="padding:6px; text-align:left; border:1px solid #ccc;">
+                                                            [Service Health] Response time &lt; 1000ms
+                                                            
+                                                        </td>
+                                                    </tr>
+                                                    
+                                                    <tr style="background:#e8f5e9;">
+                                                        <td style="padding:6px; text-align:center; border:1px solid #ccc; font-weight:bold;">
+                                                            <a href="#request-Request-Methods-0" onclick="openRequestDetails('request-Request-Methods-0')" style="color:#007bff; text-decoration:underline; cursor:pointer;">
+                                                                Request 1
+                                                            </a>
+                                                        </td>
+                                                        <td style="padding:6px; text-align:center; border:1px solid #ccc; color:#42a745; font-weight:bold;">
+                                                            ✅
+                                                        </td>
+                                                        <td style="padding:6px; text-align:left; border:1px solid #ccc; font-weight:bold;">
+                                                            GET Request
+                                                        </td>
+                                                        <td style="padding:6px; text-align:left; border:1px solid #ccc;">
+                                                            [Business] URL matches request URL
+                                                            
+                                                        </td>
+                                                    </tr>
+                                                    
+                                                    <tr style="background:#e8f5e9;">
+                                                        <td style="padding:6px; text-align:center; border:1px solid #ccc; font-weight:bold;">
+                                                            <a href="#request-Request-Methods-0" onclick="openRequestDetails('request-Request-Methods-0')" style="color:#007bff; text-decoration:underline; cursor:pointer;">
+                                                                Request 1
+                                                            </a>
+                                                        </td>
+                                                        <td style="padding:6px; text-align:center; border:1px solid #ccc; color:#42a745; font-weight:bold;">
+                                                            ✅
+                                                        </td>
+                                                        <td style="padding:6px; text-align:left; border:1px solid #ccc; font-weight:bold;">
+                                                            GET Request
+                                                        </td>
+                                                        <td style="padding:6px; text-align:left; border:1px solid #ccc;">
+                                                            [Contract] JSON schema validation
+                                                            
+                                                        </td>
+                                                    </tr>
+                                                    
+                                            <tr style="background:#f0f0f0; font-weight:bold;">
+                                                <td colspan="3" style="padding:8px; text-align:right; border:1px solid #ccc;">
+                                                    Total:
+                                                </td>
+                                                <td style="padding:8px; text-align:left; border:1px solid #ccc;">
+                                                    <span style="color:#42a745;">✅ 4 Pasadas</span> | 
+                                                    <span style="color:#dc3544;">❌ 0 Falladas</span> | 
+                                                    <span style="color:#333;">📊 4 Total</span> | 
+                                                    <span style="color:#42a745;">📈 100.0% Éxito</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </details>
+                        </td>
+                    </tr>
+            </table>
+        </div>
+
+
+    <script>
+        function openTab(evt, tabName) {
+            document.querySelectorAll('.tabcontent').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.tablink').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabName).style.display = 'block';
+            evt.currentTarget.classList.add('active');
+        }
+
+        function openRequestDetails(requestId) {
+            const requestElement = document.getElementById(requestId);
+            if (requestElement) {
+                // Abrir el details si está cerrado
+                requestElement.open = true;
+                
+                // Hacer scroll suave hacia el elemento
+                requestElement.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+                
+                // Resaltar temporalmente el request
+                requestElement.style.transition = 'all 0.3s ease';
+                requestElement.style.boxShadow = '0 0 15px 3px rgba(0, 123, 255, 0.5)';
+                requestElement.style.border = '2px solid #007bff';
+                
+                setTimeout(() => {
+                    requestElement.style.boxShadow = '';
+                    requestElement.style.border = '1px solid #ddd';
+                }, 2000);
+            }
+        }
+
+        const ctx = document.getElementById('resultsChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Pasados','Fallados','Omitidos', 'Errores'],
+                datasets:[{
+                    data:[4, 0, 0, 0],
+                    backgroundColor:['#42a745','#dc3544','#f4c10b', '#eb8a00']
+                }]
+            },
+            options: { responsive:true, plugins: { legend:{ position:'bottom' } } }
+        });
+
+        function copyResponse(btn) {
+            const pre = btn.nextElementSibling;
+            navigator.clipboard.writeText(pre.innerText)
+                .then(() => alert('Respuesta copiada al portapapeles'))
+                .catch(err => alert('Error al copiar: ' + err));
+        }
+
+        function toggleValidationTable(btn) {
+            const table = btn.parentElement.nextElementSibling;
+            if (table.style.display === 'none') {
+                table.style.display = 'table';
+                btn.innerHTML = '🔽 Ocultar';
+                btn.style.background = '#007bff';
+            } else {
+                table.style.display = 'none';
+                btn.innerHTML = '🔼 Mostrar';
+                btn.style.background = '#28a745';
+            }
+        }
+    </script>
+</body>
+</html>
