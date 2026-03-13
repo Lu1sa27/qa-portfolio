@@ -1,4 +1,4 @@
-Act as a Senior QA Manager.
+Act as a [rol].
 
 Based on the project context below, generate the following QA documentation:
 

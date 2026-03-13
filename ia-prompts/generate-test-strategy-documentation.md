@@ -17,16 +17,17 @@ Structure
 
 1. Introduction
 2. Testing Objectives
-3. Risk-Based Testing Approach
-4. Test Levels
-5. Test Types
-6. Test Environment Strategy
-7. Test Data Strategy
-8. Test Automation Strategy
-9. QA Metrics
-10. Tools and Technologies
-11. Roles and Responsibilities
-12. Assumptions and Constraints
+3. High-Level Testing Approach
+4. Risk-Based Testing
+5. Test Levels
+6. Test Types
+7. Test Environment Strategy
+8. Test Data Strategy
+9. Test Automation Strategy
+10. QA Metrics
+11. Tools and Technologies
+12. Roles and Responsibilities
+13. Assumptions and Constraints
 
 Rules
 

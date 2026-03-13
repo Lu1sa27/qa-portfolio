@@ -21,7 +21,6 @@ Structure:
 4. Risk Assessment Matrix
 5. Risk Mitigation Strategy
 6. Testing Prioritization Based on Risk
-7. Assumptions and Constraints
 
 Rules
 
